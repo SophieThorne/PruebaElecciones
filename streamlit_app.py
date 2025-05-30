@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pandasai import SmartDataframe
-from pandasai.llm.openai import OpenAI
+from pandasai.llms import OpenAI
 
 # --- CONFIGURACIÓN GENERAL ---
 st.set_page_config(page_title="Explora las elecciones del PJ 📊", layout="wide")
