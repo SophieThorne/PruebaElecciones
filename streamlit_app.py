@@ -1,19 +1,21 @@
 import streamlit as st
+import pandasai as pai
 import pandas as pd
-from pandas_ai import SmartDataframe
-from pandas_ai.llm import OpenAI
 
-# --- CONFIGURACIÓN GENERAL ---
+# Configura tu API key de PandasAI
+pai.api_key.set(st.secrets["pandasai_api_key"])
+
+# Config general
 st.set_page_config(page_title="Explora las elecciones del PJ 📊", layout="wide")
 st.title("🧠 Superdatada: Explora las bases del Poder Judicial")
 
 st.markdown("""
 Bienvenida/o a este espacio de exploración de datos.  
-Aquí puedes consultar las bases de personas candidatas a cargos en el Poder Judicial  
-y hacer preguntas en lenguaje natural para obtener insights directamente desde los datos proporcionados por el INE.
+Consulta las bases de personas candidatas a cargos en el Poder Judicial  
+y haz preguntas en lenguaje natural directamente sobre los datos del INE.
 """)
 
-# --- CARGA DE ARCHIVOS DISPONIBLES ---
+# Selección de base
 st.sidebar.header("📂 Bases disponibles")
 
 archivos = {
@@ -26,29 +28,21 @@ archivos = {
 }
 
 opcion = st.sidebar.selectbox("Selecciona una base de datos:", list(archivos.keys()))
-archivo = archivos[opcion]
 
 try:
-    df = pd.read_excel(archivo)
+    df = pd.read_excel(archivos[opcion])
+    sdf = pai.DataFrame(df)
+
     st.subheader(f"📋 Datos de: {opcion}")
     st.dataframe(df, use_container_width=True)
-except Exception as e:
-    st.error(f"Error al cargar el archivo: {e}")
-    st.stop()
 
-# --- PREGUNTAS EN LENGUAJE NATURAL ---
-st.markdown("### 💬 Haz una pregunta sobre esta base de datos")
+    st.markdown("### 💬 Haz una pregunta sobre esta base de datos")
+    pregunta = st.text_input("Por ejemplo: ¿Cuál es la especialidad con más personas candidatas?")
 
-pregunta = st.text_input("Por ejemplo: ¿Cuál es la especialidad con más personas candidatas?")
-
-if pregunta:
-    try:
+    if pregunta:
         with st.spinner("Pensando..."):
-            llm = OpenAI(api_token=st.secrets["openai_api_key"])
-            sdf = SmartDataframe(df, config={"llm": llm})
             respuesta = sdf.chat(pregunta)
-
         st.success("✅ Respuesta:")
         st.write(respuesta)
-    except Exception as e:
-        st.error(f"Ocurrió un error procesando tu pregunta: {e}")
+except Exception as e:
+    st.error(f"Ocurrió un error al procesar la base: {e}")
