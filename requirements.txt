@@ -1,4 +1,4 @@
 streamlit
 pandas
 openai
-git+https://github.com/pandas-ai/pandas-ai.git@main
+pandas-ai
