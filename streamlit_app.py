@@ -64,7 +64,7 @@ try:
 
     # Filtros amigables
     st.markdown("### 🎛️ Filtros personalizados")
-    cols_filtrar = ["Circuito", "Distrito", "Nombre", "Sexo", "Grado máximo de estudios", "Número de lista"]
+    cols_filtrar = ["Circuito", "Distrito", "Nombre", "Sexo", "Grado máximo de estudios", "Número de Lista", "Especialidad"]
     for col in cols_filtrar:
         if col in df.columns:
             valores = sorted(df[col].dropna().unique())
