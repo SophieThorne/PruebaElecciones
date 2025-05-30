@@ -62,17 +62,18 @@ try:
     df = pd.read_excel(archivo)
     st.subheader(f"📋 Datos de: {opcion}")
 
-    # Filtros básicos
-    with st.expander("🔍 Filtros avanzados"):
-        columnas_filtrables = [col for col in df.columns if df[col].dtype == object and df[col].nunique() < 100]
-        filtros = {}
-        for col in columnas_filtrables:
-            valores = df[col].dropna().unique().tolist()
-            seleccion = st.multiselect(f"Filtrar por {col}", opciones := sorted(valores), default=valores)
-            filtros[col] = seleccion
+    # Filtros amigables
+    st.markdown("### 🎛️ Filtros personalizados")
+    cols_filtrar = ["Circuito", "Distrito", "Nombre", "Sexo", "Grado máximo de estudios", "Número de lista"]
+    for col in cols_filtrar:
+        if col in df.columns:
+            valores = sorted(df[col].dropna().unique())
+            seleccion = st.selectbox(f"Filtrar por {col}", ["Todos"] + valores, key=col)
+            if seleccion != "Todos":
+                df = df[df[col] == seleccion]
 
-        for col, vals in filtros.items():
-            df = df[df[col].isin(vals)]
+    # Botón de descarga
+    st.download_button("📥 Descargar datos filtrados", data=df.to_csv(index=False).encode("utf-8"), file_name="candidatos_filtrados.csv", mime="text/csv")
 
     # Mostrar tabla resaltando columnas clave
     cols_esenciales = ["Nombre", "Sexo", "Especialidad", "Circuito", "Distrito", "Número de lista"]
