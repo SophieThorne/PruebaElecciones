@@ -15,6 +15,19 @@ y hacer preguntas en lenguaje natural para obtener insights directamente desde l
 # --- API Key ---
 pai.api_key.set(st.secrets["pandasai_api_key"])
 
+# --- Mapeo de estados a circunscripción ---
+estado_a_circunscripcion = {
+    "Baja California": 1, "Baja California Sur": 1, "Chihuahua": 1, "Durango": 1,
+    "Jalisco": 1, "Nayarit": 1, "Sinaloa": 1, "Sonora": 1,
+    "Aguascalientes": 2, "Coahuila": 2, "Guanajuato": 2, "Nuevo León": 2,
+    "Querétaro": 2, "San Luis Potosí": 2, "Tamaulipas": 2, "Zacatecas": 2,
+    "Campeche": 3, "Chiapas": 3, "Oaxaca": 3, "Quintana Roo": 3,
+    "Tabasco": 3, "Veracruz": 3, "Yucatán": 3,
+    "Ciudad de México": 4, "CDMX": 4, "Guerrero": 4,
+    "Morelos": 4, "Puebla": 4, "Tlaxcala": 4,
+    "Colima": 5, "Hidalgo": 5, "Estado de México": 5, "Michoacán": 5,
+}
+
 # --- CARGA DE ARCHIVOS DISPONIBLES ---
 st.sidebar.header("📂 Bases disponibles")
 
@@ -29,6 +42,21 @@ archivos = {
 
 opcion = st.sidebar.selectbox("Selecciona una base de datos:", list(archivos.keys()))
 archivo = archivos[opcion]
+
+# Circunscripción solo si aplica
+if opcion == "Magistraturas de Sala Regional del Tribunal Electoral":
+    st.sidebar.markdown("### 🧭 ¿No sabes qué circunscripción te corresponde?")
+    estado_sel = st.sidebar.selectbox("📍 Selecciona tu estado", sorted(estado_a_circunscripcion.keys()))
+    circ = estado_a_circunscripcion.get(estado_sel)
+    st.sidebar.success(f"Tu circunscripción es: **{circ}**")
+
+# Instrucción para obtener Circuito/Distrito si aplica
+if opcion in ["Magistraturas de Circuito", "Juzgados de Distrito"]:
+    st.sidebar.markdown("""
+📌 **¿No sabes cuál es tu circuito o distrito judicial?**  
+Entra a 👉 [https://cartografia.ine.mx/sige8/mapas/conoce-tu-nuevo-distrito](https://cartografia.ine.mx/sige8/mapas/conoce-tu-nuevo-distrito)  
+y escribe tu estado y sección del INE para conocerlos.
+""")
 
 try:
     df = pd.read_excel(archivo)
@@ -46,14 +74,21 @@ try:
         for col, vals in filtros.items():
             df = df[df[col].isin(vals)]
 
-    st.dataframe(df, use_container_width=True)
+    # Mostrar tabla resaltando columnas clave
+    cols_esenciales = ["Nombre", "Sexo", "Especialidad", "Circuito", "Distrito", "Número de lista"]
+    cols_esenciales = [col for col in cols_esenciales if col in df.columns]
+    orden_cols = cols_esenciales + [col for col in df.columns if col not in cols_esenciales]
+    st.dataframe(df[orden_cols], use_container_width=True)
 
 except Exception as e:
     st.error(f"Error al cargar el archivo: {e}")
     st.stop()
 
 # --- PREGUNTAS EN LENGUAJE NATURAL ---
-st.markdown("### 💬 Haz una pregunta sobre esta base de datos")
+st.markdown("""
+---
+### 💬 Haz una pregunta sobre esta base de datos
+""")
 
 pregunta = st.text_input("Por ejemplo: ¿Cuál es la especialidad con más personas candidatas?")
 
@@ -71,7 +106,8 @@ if pregunta:
             if len(respuesta) <= 20:
                 for _, row in respuesta.iterrows():
                     with st.expander(f"👤 {row.get('Nombre', 'Candidato/a')}"):
-                        st.write(row.to_frame())
+                        for col in row.index:
+                            st.markdown(f"**{col}:** {row[col]}")
             else:
                 st.dataframe(respuesta, use_container_width=True)
         else:
