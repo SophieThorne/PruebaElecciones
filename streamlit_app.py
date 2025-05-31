@@ -123,34 +123,38 @@ if palabra_input:
             for col in row.index:
                 st.markdown(f"**{col}:** {row[col]}")
 
-# --- PREGUNTAS EN LENGUAJE NATURAL ---
-st.markdown("""
----
-### 💬 Haz una pregunta sobre esta base de datos
-""")
+# --- Tendencias temáticas ---
+st.markdown("### 📌 Temas comunes en propuestas y visiones")
 
-pregunta = st.text_input("Por ejemplo: ¿De los candidatos filtrados quién tiene estudios o propuestas de equidad de género?")
+columnas_texto = [
+    "¿Porqué me pustulé para el cargo?", "Visión de la función Jurisdiccional",
+    "Visión de la Justicia", "Propuesta 1", "Propuesta 2", "Propuesta 3",
+    "Cursos y Especializaciones"
+]
 
-if pregunta:
-    try:
-        with st.spinner("Pensando..."):
-            sdf = pai.DataFrame(df)
-            respuesta = sdf.chat(pregunta)
+texto_total = " ".join(df[col].dropna().astype(str).str.lower().str.cat(sep=" ") for col in columnas_texto if col in df.columns)
 
-        st.success("✅ Respuesta:")
+# Filtrado básico de palabras sin valor analítico
+stopwords = set(["para", "esta", "entre", "como", "que", "con", "los", "las", "una", "por", "del", "más", "sus", "han", "este", "cada", "desde", "pero", "solo", "todo"])
 
-        if isinstance(respuesta, pd.DataFrame):
-            st.markdown("Haz clic en el nombre de cada candidata o candidato para ver su ficha completa.")
-            if respuesta.shape[0] <= 20:
-                for idx, row in respuesta.iterrows():
-                    nombre = str(row.get("Nombre", f"Candidato/a {idx+1}"))
-                    with st.expander(f"👤 {nombre}"):
-                        for col, val in row.items():
-                            st.markdown(f"**{col}:** {val}")
-            else:
-                st.dataframe(respuesta, use_container_width=True)
-        else:
-            st.write(respuesta)
+palabras = re.findall(r'\b\w{4,}\b', texto_total)
+conteo = Counter(p for p in palabras if p not in stopwords)
+palabras_comunes = [palabra for palabra, _ in conteo.most_common(30)]
 
-    except Exception as e:
-        st.error(f"Ocurrió un error procesando tu pregunta: {e}")
+st.markdown("Selecciona una palabra para ver las candidaturas que la mencionan:")
+colpal = st.columns(6)
+for i, palabra in enumerate(palabras_comunes):
+    if colpal[i % 6].button(palabra):
+        resultado = df[
+            df[columnas_texto].apply(
+                lambda fila: any(palabra in str(valor).lower() for valor in fila if pd.notna(valor)),
+                axis=1
+            )
+        ]
+        st.markdown(f"Se encontraron **{len(resultado)}** personas que mencionan la palabra: *{palabra}*")
+        for _, row in resultado.iterrows():
+            nombre = str(row.get("Nombre", "Candidato/a"))
+            numero = str(row.get("Número de Lista", ""))
+            with st.expander(f"👤 {nombre} — Lista: {numero}"):
+                for col in row.index:
+                    st.markdown(f"**{col}:** {row[col]}")
