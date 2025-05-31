@@ -67,7 +67,7 @@ try:
     st.markdown("### 🎛️ Filtros")
 
     cols_filtrar = [
-        "Circuito", "Distrito", "Circunscripción", "Nombre",
+        "Circuito", "Distrito", "Circunscripcion", "Nombre",
         "Sexo", "Grado máximo de estudios", "Número de Lista", "Especialidad"
     ]
 
