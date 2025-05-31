@@ -103,35 +103,26 @@ except Exception as e:
     st.error(f"Error al cargar el archivo: {e}")
     st.stop()
 
-    # --- Análisis de palabras en textos largos ---
-st.markdown("### 🔍 Palabras más mencionadas en propuestas y visiones")
+# --- Análisis de palabras en textos largos ---
+st.markdown("### 🔍 Buscar una palabra clave en las propuestas")
 
-# Campos a analizar
+# Entrada personalizada
+palabra_input = st.text_input("Escribe una palabra para buscarla en las propuestas y visiones")
 columnas_texto = [
-    "¿Porqué me pustulé para el cargo?",
-    "Visión de la función Jurisdiccional",
-    "Visión de la Justicia",
-    "Propuesta 1", "Propuesta 2", "Propuesta 3",
+    "¿Porqué me pustulé para el cargo?", "Visión de la función Jurisdiccional",
+    "Visión de la Justicia", "Propuesta 1", "Propuesta 2", "Propuesta 3",
     "Cursos y Especializaciones"
 ]
 
-# Unir texto y limpiar
-texto_total = " ".join(df[col].dropna().astype(str).str.lower().str.cat(sep=" ") for col in columnas_texto)
-palabras = re.findall(r'\b\w+\b', texto_total)
-stopwords = set(["para", "esta", "entre", "como", "que", "con", "los", "las", "una", "por", "del", "más", "sus", "han"])
-palabras_limpias = [p for p in palabras if len(p) > 3 and p not in stopwords]
-
-# Conteo y visualización
-conteo = Counter(palabras_limpias)
-palabras_comunes = [palabra for palabra, _ in conteo.most_common(30)]
-palabra_clave = st.selectbox("🔎 Selecciona una palabra clave para ver quién la mencionó:", ["Ninguna"] + palabras_comunes)
-
-if palabra_clave != "Ninguna":
-    resultado = df[df[columnas_texto].apply(
-        lambda fila: any(palabra_clave in str(c).lower() for c in fila if pd.notna(c)), axis=1)]
-
-    st.markdown(f"🗂️ Se encontraron **{len(resultado)}** personas que mencionan la palabra: *{palabra_clave}*")
-
+if palabra_input:
+    palabra_input = palabra_input.strip().lower()
+    resultado = df[
+        df[columnas_texto].apply(
+            lambda fila: any(palabra_input in str(valor).lower() for valor in fila if pd.notna(valor)),
+            axis=1
+        )
+    ]
+    st.markdown(f"Se encontraron **{len(resultado)}** personas que mencionan la palabra: *{palabra_input}*")
     for _, row in resultado.iterrows():
         nombre = str(row.get("Nombre", "Candidato/a"))
         with st.expander(f"👤 {nombre}"):
