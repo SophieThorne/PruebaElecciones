@@ -64,24 +64,14 @@ try:
     df = pd.read_excel(archivo)
     st.subheader(f"📋 Datos de: {opcion}")
 
-    # Filtros amigables
     st.markdown("### 🎛️ Filtros")
 
     cols_filtrar = [
-        "Circuito",
-        "Distrito",
-        "Circunscripción",
-        "Nombre",
-        "Sexo",
-        "Grado máximo de estudios",
-        "Número de Lista",
-        "Especialidad"
+        "Circuito", "Distrito", "Circunscripción", "Nombre",
+        "Sexo", "Grado máximo de estudios", "Número de Lista", "Especialidad"
     ]
 
-    # Crear columnas horizontales (puedes ajustar el número si hay más filtros)
     columnas = st.columns(len(cols_filtrar))
-
-    # Iterar sobre filtros y colocarlos en columnas horizontales
     for i, col in enumerate(cols_filtrar):
         if col in df.columns:
             valores = sorted(df[col].dropna().unique())
@@ -89,15 +79,19 @@ try:
             if seleccion != "Todos":
                 df = df[df[col] == seleccion]
 
-    # Botón de descarga
-    st.download_button("📥 Descargar datos filtrados", data=df.to_csv(index=False).encode("utf-8"), file_name="candidatos_filtrados.csv", mime="text/csv")
+    st.download_button("📅 Descargar datos filtrados", data=df.to_csv(index=False).encode("utf-8"), file_name="candidatos_filtrados.csv", mime="text/csv")
 
-    # Mostrar tabla resaltando columnas clave
-    cols_esenciales = ["Nombre", "Número de lista","Sexo", "Especialidad", "Circuito", "Distrito"]
+    cols_esenciales = ["Nombre", "Número de Lista", "Sexo", "Especialidad", "Circuito", "Distrito"]
     cols_esenciales = [col for col in cols_esenciales if col in df.columns]
     orden_cols = cols_esenciales + [col for col in df.columns if col not in cols_esenciales]
-    st.dataframe(df[orden_cols], use_container_width=True)
 
+    st.markdown("### 🗂️ Resultados (haz clic en un nombre para ver más detalles)")
+    for idx, row in df[orden_cols].iterrows():
+        nombre = row.get("Nombre", f"Candidato/a {idx+1}")
+        numero = row.get("Número de Lista", "")
+        with st.expander(f"👤 {nombre} — Lista: {numero}"):
+            for col, val in row.items():
+                st.markdown(f"**{col}:** {val}")
 
 except Exception as e:
     st.error(f"Error al cargar el archivo: {e}")
