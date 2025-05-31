@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import pandasai as pai
+import re
+from collections import Counter
 
 # --- CONFIGURACIÓN GENERAL ---
 st.set_page_config(page_title="Explora las elecciones del PJ 📊", layout="wide")
@@ -63,12 +65,27 @@ try:
     st.subheader(f"📋 Datos de: {opcion}")
 
     # Filtros amigables
-    st.markdown("### 🎛️ Filtros personalizados")
-    cols_filtrar = ["Circuito", "Distrito", "Nombre", "Sexo", "Grado máximo de estudios", "Número de Lista", "Especialidad"]
-    for col in cols_filtrar:
+    st.markdown("### 🎛️ Filtros")
+
+    cols_filtrar = [
+        "Circuito",
+        "Distrito",
+        "Circunscripción",
+        "Nombre",
+        "Sexo",
+        "Grado máximo de estudios",
+        "Número de Lista",
+        "Especialidad"
+    ]
+
+    # Crear columnas horizontales (puedes ajustar el número si hay más filtros)
+    columnas = st.columns(len(cols_filtrar))
+
+    # Iterar sobre filtros y colocarlos en columnas horizontales
+    for i, col in enumerate(cols_filtrar):
         if col in df.columns:
             valores = sorted(df[col].dropna().unique())
-            seleccion = st.selectbox(f"Filtrar por {col}", ["Todos"] + valores, key=col)
+            seleccion = columnas[i].selectbox(f"{col}", ["Todos"] + valores, key=f"filtro_{col}")
             if seleccion != "Todos":
                 df = df[df[col] == seleccion]
 
@@ -76,14 +93,50 @@ try:
     st.download_button("📥 Descargar datos filtrados", data=df.to_csv(index=False).encode("utf-8"), file_name="candidatos_filtrados.csv", mime="text/csv")
 
     # Mostrar tabla resaltando columnas clave
-    cols_esenciales = ["Nombre", "Sexo", "Especialidad", "Circuito", "Distrito", "Número de lista"]
+    cols_esenciales = ["Nombre", "Número de lista","Sexo", "Especialidad", "Circuito", "Distrito"]
     cols_esenciales = [col for col in cols_esenciales if col in df.columns]
     orden_cols = cols_esenciales + [col for col in df.columns if col not in cols_esenciales]
     st.dataframe(df[orden_cols], use_container_width=True)
 
+
 except Exception as e:
     st.error(f"Error al cargar el archivo: {e}")
     st.stop()
+
+    # --- Análisis de palabras en textos largos ---
+st.markdown("### 🔍 Palabras más mencionadas en propuestas y visiones")
+
+# Campos a analizar
+columnas_texto = [
+    "¿Porqué me pustulé para el cargo?",
+    "Visión de la función Jurisdiccional",
+    "Visión de la Justicia",
+    "Propuesta 1", "Propuesta 2", "Propuesta 3",
+    "Cursos y Especializaciones"
+]
+
+# Unir texto y limpiar
+texto_total = " ".join(df[col].dropna().astype(str).str.lower().str.cat(sep=" ") for col in columnas_texto)
+palabras = re.findall(r'\b\w+\b', texto_total)
+stopwords = set(["para", "esta", "entre", "como", "que", "con", "los", "las", "una", "por", "del", "más", "sus", "han"])
+palabras_limpias = [p for p in palabras if len(p) > 3 and p not in stopwords]
+
+# Conteo y visualización
+conteo = Counter(palabras_limpias)
+palabras_comunes = [palabra for palabra, _ in conteo.most_common(30)]
+palabra_clave = st.selectbox("🔎 Selecciona una palabra clave para ver quién la mencionó:", ["Ninguna"] + palabras_comunes)
+
+if palabra_clave != "Ninguna":
+    resultado = df[df[columnas_texto].apply(
+        lambda fila: any(palabra_clave in str(c).lower() for c in fila if pd.notna(c)), axis=1)]
+
+    st.markdown(f"🗂️ Se encontraron **{len(resultado)}** personas que mencionan la palabra: *{palabra_clave}*")
+
+    for _, row in resultado.iterrows():
+        nombre = str(row.get("Nombre", "Candidato/a"))
+        with st.expander(f"👤 {nombre}"):
+            for col in row.index:
+                st.markdown(f"**{col}:** {row[col]}")
 
 # --- PREGUNTAS EN LENGUAJE NATURAL ---
 st.markdown("""
@@ -91,7 +144,7 @@ st.markdown("""
 ### 💬 Haz una pregunta sobre esta base de datos
 """)
 
-pregunta = st.text_input("Por ejemplo: ¿Cuál es la especialidad con más personas candidatas?")
+pregunta = st.text_input("Por ejemplo: ¿De los candidatos filtrados quién tiene estudios o propuestas de equidad de género?")
 
 if pregunta:
     try:
@@ -101,14 +154,14 @@ if pregunta:
 
         st.success("✅ Respuesta:")
 
-        # Si la respuesta es un DataFrame
         if isinstance(respuesta, pd.DataFrame):
             st.markdown("Haz clic en el nombre de cada candidata o candidato para ver su ficha completa.")
-            if len(respuesta) <= 20:
-                for _, row in respuesta.iterrows():
-                    with st.expander(f"👤 {row.get('Nombre', 'Candidato/a')}"):
-                        for col in row.index:
-                            st.markdown(f"**{col}:** {row[col]}")
+            if respuesta.shape[0] <= 20:
+                for idx, row in respuesta.iterrows():
+                    nombre = str(row.get("Nombre", f"Candidato/a {idx+1}"))
+                    with st.expander(f"👤 {nombre}"):
+                        for col, val in row.items():
+                            st.markdown(f"**{col}:** {val}")
             else:
                 st.dataframe(respuesta, use_container_width=True)
         else:
